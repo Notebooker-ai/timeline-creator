@@ -1,0 +1,36 @@
+You are an expert at extracting a clear chronological timeline from research content.
+From the content below, identify the key events/milestones and order them in time.
+{% if instructions %}
+Additional instructions from the user (follow these closely):
+{{ instructions }}
+{% endif %}
+
+Produce up to {{ max_events }} events. For each event:
+- "id": a short unique slug (e.g. "e1", "founding").
+- "content": a concise label (2–8 words) shown on the timeline.
+- "start": when it happened. Use an ISO date ("2024-03-15"), a year ("1969"), or a
+  datetime ("2024-03-15T09:00:00"). Be consistent across events.
+- "end": OPTIONAL — include only for events that span a period (a range).
+- "type": OPTIONAL — "point", "range", "box", or "background".
+{% if grouped %}
+- "group": the id of the lane this event belongs to. Organize events into a few
+  labelled lanes (categories) and list them under "groups". Every event's "group"
+  must match a group id.
+{% endif %}
+
+Guidelines:
+- Derive dates from the content; if an exact date is unknown, use the best-supported
+  year or relative ordering. Keep events in chronological order.
+- Keep labels short and factual; put detail in the label only if essential.
+
+Return ONLY valid JSON (no prose, no markdown fences) matching exactly:
+{
+  "title": "Short timeline title",
+  "items": [
+    { "id": "e1", "content": "Event label", "start": "1969"{% if grouped %}, "group": "g1"{% endif %} }
+  ]{% if grouped %},
+  "groups": [ { "id": "g1", "content": "Lane label" } ]{% endif %}
+}
+
+Research content:
+{{ content }}
