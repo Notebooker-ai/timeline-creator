@@ -1,7 +1,7 @@
 """timeline-creator: an Open Notebook creator that turns notebook content into a
-chronological **timeline** (emitted as ``timeline.v1``, rendered client-side by
-vis-timeline). Data-only — the LLM produces dated items (and optional lane groups);
-the frontend builds the interactive timeline directly.
+chronological **timeline** (emitted as ``timeline.v1``). The LLM produces dated
+items (and optional lane groups) — no files — which the creator's own self-contained
+view bundle (``view/index.html``) renders in the host's sandboxed iframe.
 """
 
 import json
@@ -17,12 +17,13 @@ from open_notebook_creator_sdk import (
     CreationRequest,
     CreationResult,
     CreatorManifest,
+    CreatorView,
     ModelRoleSpec,
 )
 from open_notebook_creator_sdk.schemas import TimelineV1
 from pydantic import BaseModel, Field
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 _ITEM_TYPES = {"point", "range", "box", "background"}
 
@@ -87,6 +88,7 @@ class TimelineCreator(BaseCreator):
                 )
             ],
             icon="calendar-clock",
+            view=CreatorView(entry="view/index.html"),
         )
 
     async def generate(self, request: CreationRequest) -> CreationResult:
