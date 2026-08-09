@@ -89,6 +89,11 @@ class TimelineCreator(BaseCreator):
             ],
             icon="calendar-clock",
             view=CreatorView(entry="view/index.html"),
+            suggestion_hint=(
+                "which chronological thread to trace, the time span to cover, how "
+                "fine-grained events should be, and how to group them into lanes or "
+                "eras"
+            ),
         )
 
     async def generate(self, request: CreationRequest) -> CreationResult:
