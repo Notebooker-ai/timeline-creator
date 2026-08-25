@@ -154,3 +154,16 @@ def test_manifest_declares_view_bundle_and_it_ships():
     assert 'src="http' not in html  # no external scripts (sandbox-safe, offline)
     # owns date parsing so a bare year isn't misread as epoch-milliseconds
     assert "setFullYear" in html
+
+
+def test_view_bundle_uses_vis_timeline():
+    """The view renders with bundled vis-timeline (replacing the hand-rolled
+    absolute-position layout whose estimated label widths and hard truncation
+    made dense timelines unreadable). Dates are still pre-parsed on our side —
+    vis-timeline reads a bare "1956" as epoch milliseconds."""
+    from importlib import resources
+
+    html = resources.files("timeline_creator").joinpath("view/index.html").read_text()
+    assert "vis-timeline" in html
+    assert "vis-item" in html
+    assert 'src="http' not in html  # bundled, not CDN-loaded

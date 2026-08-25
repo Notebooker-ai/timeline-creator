@@ -7,3 +7,7 @@ build/
 .pytest_cache/
 .ruff_cache/
 .DS_Store
+view-src/node_modules/
+.DS_Store
+__pycache__/
+*.pyc

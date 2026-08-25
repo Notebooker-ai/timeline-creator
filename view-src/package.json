@@ -1,0 +1,16 @@
+{
+  "name": "timeline-creator-view",
+  "private": true,
+  "version": "0.3.0",
+  "description": "Build for the self-contained vis-timeline view bundle shipped at src/timeline_creator/view/index.html",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  },
+  "dependencies": {
+    "vis-timeline": "^8.3.2"
+  }
+}

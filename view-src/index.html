@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Timeline</title>
+    <style>
+      :root {
+        --bg: #ffffff; --fg: #18181b; --muted: #71717a; --card: #fafafa;
+        --border: #e4e4e7; --accent: #4f46e5; --accent-fg: #ffffff;
+      }
+      :root[data-theme="dark"] {
+        --bg: #18181b; --fg: #fafafa; --muted: #a1a1aa; --card: #27272a;
+        --border: #3f3f46; --accent: #6366f1; --accent-fg: #ffffff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; padding: 16px; background: var(--bg); color: var(--fg);
+        font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      h1.title { font-size: 20px; margin: 0 0 12px; }
+      .empty { color: var(--muted); padding: 24px; text-align: center; }
+      .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+      /* Restyle vis-timeline onto the shell's light/dark variables. The
+         standalone build self-injects its CSS at runtime (after this
+         <style>), so these selectors carry an `html` prefix to win on
+         specificity rather than order. */
+      html .vis-timeline { border-color: var(--border); font-size: 13px; }
+      html .vis-item {
+        background: var(--card); border-color: var(--border); color: var(--fg);
+        border-radius: 8px;
+      }
+      html .vis-item .vis-item-content {
+        white-space: normal; max-width: 280px; line-height: 1.3; padding: 4px 8px;
+      }
+      html .vis-item.vis-selected {
+        background: var(--accent); border-color: var(--accent); color: var(--accent-fg);
+      }
+      html .vis-item.vis-dot { border-color: var(--accent); }
+      html .vis-item.vis-line { border-color: var(--accent); }
+      html .vis-item.vis-background { background: rgba(99, 102, 241, 0.08); }
+      html .vis-time-axis .vis-text { color: var(--muted); }
+      html .vis-time-axis .vis-grid.vis-minor, html .vis-time-axis .vis-grid.vis-major { border-color: var(--border); }
+      html .vis-panel.vis-bottom, html .vis-panel.vis-center, html .vis-panel.vis-left, html .vis-panel.vis-right, html .vis-panel.vis-top { border-color: var(--border); }
+      html .vis-labelset .vis-label, html .vis-foreground .vis-group { border-color: var(--border); color: var(--fg); }
+      html .vis-labelset .vis-label .vis-inner { color: var(--muted); font-weight: 600; }
+      html .vis-tooltip {
+        background: var(--card) !important; border: 1px solid var(--border) !important;
+        color: var(--fg) !important; font: 12px/1.4 system-ui, sans-serif !important;
+        border-radius: 8px !important; padding: 6px 10px !important;
+      }
+      html .vis-current-time { display: none; }
+    </style>
+  </head>
+  <body>
+    <div id="root"><div class="empty">Loading…</div></div>
+    <script>/*__BUNDLE__*/</script>
+  </body>
+</html>
