@@ -8,6 +8,8 @@ Additional instructions from the user (follow these closely):
 Produce up to {{ max_events }} events. For each event:
 - "id": a short unique slug (e.g. "e1", "founding").
 - "content": a concise label (2–8 words) shown on the timeline.
+- "detail": one short line of context under the label (up to ~10 words) — what
+  happened or why it mattered. Omit it rather than padding the label out.
 - "start": when it happened. Use an ISO date ("2024-03-15"), a year ("1969"), or a
   datetime ("2024-03-15T09:00:00"). Be consistent across events.
 - "end": OPTIONAL — include only for events that span a period (a range).
@@ -21,13 +23,21 @@ Produce up to {{ max_events }} events. For each event:
 Guidelines:
 - Derive dates from the content; if an exact date is unknown, use the best-supported
   year or relative ordering. Keep events in chronological order.
-- Keep labels short and factual; put detail in the label only if essential.
+- Give each date only the precision the sources support: a bare year ("1356") when
+  that is all they say. Do not invent a month or a day to make dates look uniform.
+- Keep labels short and factual; the second line is what "detail" is for.
+- Cover the whole span evenly. If the content supports events across a long period,
+  take them from throughout it rather than clustering on the best-documented
+  stretch and leaving decades unrepresented — a timeline whose events all fall in
+  one short window, with a single distant outlier, tells the reader nothing about
+  the period in between. Where a long quiet stretch is genuine, that is fine; where
+  the sources do describe events in it, include them.
 
 Return ONLY valid JSON (no prose, no markdown fences) matching exactly:
 {
   "title": "Short timeline title",
   "items": [
-    { "id": "e1", "content": "Event label", "start": "1969"{% if grouped %}, "group": "g1"{% endif %} }
+    { "id": "e1", "content": "Event label", "detail": "one short line of context", "start": "1969"{% if grouped %}, "group": "g1"{% endif %} }
   ]{% if grouped %},
   "groups": [ { "id": "g1", "content": "Lane label" } ]{% endif %}
 }

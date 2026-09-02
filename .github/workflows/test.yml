@@ -30,3 +30,15 @@ jobs:
 
       - name: Run tests
         run: uv run pytest -v
+
+      # The view bundle's date handling (BC years, bare years, calendar dates
+      # that must not shift a day across timezones) is JavaScript, so it is
+      # tested where it runs.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run view tests
+        working-directory: view-src
+        run: node --test

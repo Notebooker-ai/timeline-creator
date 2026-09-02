@@ -156,14 +156,46 @@ def test_manifest_declares_view_bundle_and_it_ships():
     assert "setFullYear" in html
 
 
-def test_view_bundle_uses_vis_timeline():
-    """The view renders with bundled vis-timeline (replacing the hand-rolled
-    absolute-position layout whose estimated label widths and hard truncation
-    made dense timelines unreadable). Dates are still pre-parsed on our side —
-    vis-timeline reads a bare "1956" as epoch milliseconds."""
+def test_view_bundle_renders_a_vertical_timeline():
+    """The view is a vertical, scrolling list of events, not a horizontal axis.
+
+    A horizontal axis spends its width on elapsed time rather than on labels,
+    and real notebook timelines are lumpy: the published Black Prince timeline
+    put 17 of its 18 events inside six years with one outlier 17 years earlier,
+    so most of the axis was empty and the events were an unreadable pile. In a
+    557px embed card there was no room for labels at all.
+
+    Vertical gives every row the full width, spaces rows evenly, and states a
+    long jump instead of drawing it as emptiness."""
     from importlib import resources
 
     html = resources.files("timeline_creator").joinpath("view/index.html").read_text()
-    assert "vis-timeline" in html
-    assert "vis-item" in html
-    assert 'src="http' not in html  # bundled, not CDN-loaded
+    # The rail, the rows, and the explicit gap marker.
+    assert "gap-label" in html
+    assert "years" in html
+    # No charting library left to bundle — or to leave content hidden.
+    assert "vis-timeline" not in html
+    assert 'src="http' not in html
+
+
+def test_view_bundle_is_small_without_a_charting_library():
+    """Dropping vis-timeline took the bundle from ~500KB to single digits, which
+    is most of what an embed card has to fetch before anything appears."""
+    from importlib import resources
+
+    html = resources.files("timeline_creator").joinpath("view/index.html").read_text()
+    assert len(html) < 40_000, f"view bundle grew to {len(html)} bytes"
+
+
+def test_clean_item_keeps_a_detail_line():
+    """Each row shows a label and, under it, one short line of context."""
+    from timeline_creator import _clean_item
+
+    item = _clean_item(
+        {"content": "Battle of Poitiers", "start": "1356-09-19", "detail": " King John captured "},
+        0,
+    )
+    assert item["detail"] == "King John captured"
+    # Absent or blank detail is simply omitted, not stored as an empty string.
+    assert "detail" not in _clean_item({"content": "Truce", "start": "1357"}, 1)
+    assert "detail" not in _clean_item({"content": "Truce", "start": "1357", "detail": "  "}, 2)

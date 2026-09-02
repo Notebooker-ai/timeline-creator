@@ -18,39 +18,81 @@
         margin: 0; padding: 16px; background: var(--bg); color: var(--fg);
         font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       }
-      h1.title { font-size: 20px; margin: 0 0 12px; }
+      h1.title { font-size: 20px; margin: 0 0 16px; }
       .empty { color: var(--muted); padding: 24px; text-align: center; }
-      .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
 
-      /* Restyle vis-timeline onto the shell's light/dark variables. The
-         standalone build self-injects its CSS at runtime (after this
-         <style>), so these selectors carry an `html` prefix to win on
-         specificity rather than order. */
-      html .vis-timeline { border-color: var(--border); font-size: 13px; }
-      html .vis-item {
-        background: var(--card); border-color: var(--border); color: var(--fg);
-        border-radius: 8px;
+      /* One grid for the whole list, with each row contributing its cells to
+         it (display: contents). Giving every row its own grid instead let the
+         date column size itself per row, so the dots wandered left and right
+         down the page rather than sitting on one rail. */
+      .tl {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        grid-template-columns: minmax(72px, max-content) 20px 1fr;
+        column-gap: 10px;
+        align-items: start;
       }
-      html .vis-item .vis-item-content {
-        white-space: normal; max-width: 280px; line-height: 1.3; padding: 4px 8px;
+      .row, .gap { display: contents; }
+
+      /* Spacing lives on the text cells, not on the grid, so that the rail in
+         between them stays unbroken. */
+      .when, .body, .gap-label { padding-bottom: 18px; }
+      .row:last-child .when, .row:last-child .body { padding-bottom: 0; }
+
+      .tick {
+        grid-column: 2;
+        align-self: stretch;
+        position: relative;
+        /* The rail: a 2px column painted down the middle of the cell. */
+        background: linear-gradient(var(--border), var(--border)) 50% 0 / 2px 100% no-repeat;
       }
-      html .vis-item.vis-selected {
-        background: var(--accent); border-color: var(--accent); color: var(--accent-fg);
+      /* The last event ends the rail at its own dot instead of trailing off. */
+      .row:last-child .tick { background-size: 2px 11px; }
+      .tick i {
+        position: absolute; left: 50%; top: 5px; transform: translateX(-50%);
+        width: 11px; height: 11px; border-radius: 50%;
+        background: var(--accent);
+        /* Punches the rail out from behind the dot in either theme. */
+        box-shadow: 0 0 0 3px var(--bg);
       }
-      html .vis-item.vis-dot { border-color: var(--accent); }
-      html .vis-item.vis-line { border-color: var(--accent); }
-      html .vis-item.vis-background { background: rgba(99, 102, 241, 0.08); }
-      html .vis-time-axis .vis-text { color: var(--muted); }
-      html .vis-time-axis .vis-grid.vis-minor, html .vis-time-axis .vis-grid.vis-major { border-color: var(--border); }
-      html .vis-panel.vis-bottom, html .vis-panel.vis-center, html .vis-panel.vis-left, html .vis-panel.vis-right, html .vis-panel.vis-top { border-color: var(--border); }
-      html .vis-labelset .vis-label, html .vis-foreground .vis-group { border-color: var(--border); color: var(--fg); }
-      html .vis-labelset .vis-label .vis-inner { color: var(--muted); font-weight: 600; }
-      html .vis-tooltip {
-        background: var(--card) !important; border: 1px solid var(--border) !important;
-        color: var(--fg) !important; font: 12px/1.4 system-ui, sans-serif !important;
-        border-radius: 8px !important; padding: 6px 10px !important;
+
+      .when {
+        grid-column: 1;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+        font-size: 12.5px;
+        text-align: right;
+        padding-top: 2px;
+        white-space: nowrap;
       }
-      html .vis-current-time { display: none; }
+      .body { grid-column: 3; min-width: 0; }
+      .what { margin: 0; font-weight: 600; line-height: 1.35; }
+      .detail { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+      .lane {
+        display: inline-block; margin-top: 6px;
+        padding: 1px 8px; border-radius: 999px;
+        background: var(--card); border: 1px solid var(--border);
+        color: var(--muted); font-size: 11.5px;
+      }
+
+      /* A skipped stretch of time, stated rather than drawn as empty space. */
+      .gap .tick {
+        min-height: 26px;
+        background: none;
+        border-left: 2px dotted var(--border);
+        margin-left: calc(50% - 1px);
+      }
+      .gap-label {
+        grid-column: 3; color: var(--muted); font-size: 12px; font-style: italic;
+        align-self: center; padding-bottom: 0;
+      }
+
+      @media (max-width: 380px) {
+        .tl { grid-template-columns: minmax(58px, max-content) 16px 1fr; column-gap: 8px; }
+        .when { font-size: 11.5px; }
+      }
     </style>
   </head>
   <body>

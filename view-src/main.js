@@ -1,25 +1,26 @@
 // Self-contained view bundle for the timeline-creator "timeline.v1" artifact.
 //
-// Renders with vis-timeline (bundled, offline) instead of the previous
-// hand-rolled absolute-positioning renderer, whose estimated label widths,
-// full-height gridlines, and hard ellipsis truncation made dense timelines
-// unreadable. vis-timeline measures real DOM, stacks without overlap, and
-// gives zoom/pan for free.
+// A vertical, scrolling timeline: one event per row, read top to bottom.
 //
-// vis-timeline parses bare-year strings like "1956" as epoch milliseconds —
-// the reason the first version avoided it — so every date goes through
-// parseDate() below (bare years, BC/AD/BCE/CE eras, "circa" prefixes) and only
-// real Date objects reach the library.
+// It replaces a horizontal vis-timeline render, which had three problems that
+// were all the same problem — a horizontal axis spends its width on elapsed
+// time rather than on labels. Real notebook timelines are lumpy: the published
+// "Black Prince" timeline put 17 of its 18 events inside six years and one
+// outlier 17 years earlier, so almost the whole axis was empty and the events
+// were an unreadable pile at one end. In a 557px embed card there was no room
+// for labels at all, and the library's own measure-then-unhide redraw could
+// leave the whole thing blank.
+//
+// Vertical fixes all three: every row gets the full width for its text, rows
+// are evenly spaced so density is set by how many events there are rather than
+// by how they clump, and a long jump between consecutive events is called out
+// explicitly instead of being drawn as empty space. It is also plain DOM, so
+// there is no library to leave content hidden and nothing to bundle.
 //
 // Built by build.mjs into ../src/timeline_creator/view/index.html — do not edit
 // the generated HTML by hand.
-// The standalone build self-injects vis-timeline's CSS at runtime (after the
-// shell's <style>), which is why the shell overrides use `html`-prefixed
-// selectors — they must win on specificity, not order.
-import { Timeline, DataSet } from "vis-timeline/standalone";
 
 var root = document.getElementById("root");
-var current = null; // live Timeline instance, destroyed on re-render
 
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -27,66 +28,13 @@ function esc(s) {
   });
 }
 
-// ---- date parsing (the vis-timeline bare-year shim) ------------------------
-
-// Date supports BC via negative years. ISO dates/datetimes contain non-digits
-// and are handed to the native parser.
-function yearDate(y) {
-  var d = new Date(0);
-  d.setFullYear(y, 0, 1);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function parseDate(value) {
-  if (value == null) return null;
-  if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
-  var s = String(value).trim().replace(/^(?:c\.?|ca\.?|circa)\s+/i, "");
-  if (!s) return null;
-  var ym = /^(-?\d{1,4})$/.exec(s);
-  if (ym) return yearDate(parseInt(ym[1], 10));
-  var bc = /^(\d{1,5})\s*(?:BCE?|B\.C\.(?:E\.)?)$/i.exec(s);
-  if (bc) return yearDate(1 - parseInt(bc[1], 10));
-  var ad =
-    /^(\d{1,5})\s*(?:AD|A\.D\.|CE|C\.E\.)$/i.exec(s) ||
-    /^(?:AD|A\.D\.|CE|C\.E\.)\s*(\d{1,5})$/i.exec(s);
-  if (ad) return yearDate(parseInt(ad[1], 10));
-  var t = Date.parse(s);
-  return isNaN(t) ? null : new Date(t);
-}
-
-// Axis label for a (possibly astronomical/negative) year: 0 => "1 BC".
-function yearLabel(y) {
-  return y <= 0 ? 1 - y + " BC" : String(y);
-}
-
-// Axis formatting: moment renders negative years as "-000240"; label year-and-
-// coarser scales ourselves, defer to moment's defaults for finer scales.
-var MINOR_FMT = {
-  millisecond: "SSS", second: "s", minute: "HH:mm", hour: "HH:mm",
-  weekday: "ddd D", day: "D", week: "w", month: "MMM",
-};
-var MAJOR_FMT = {
-  millisecond: "HH:mm:ss", second: "D MMMM HH:mm", minute: "ddd D MMMM",
-  hour: "ddd D MMMM", weekday: "MMMM YYYY", day: "MMMM YYYY",
-  week: "MMMM YYYY", month: "YYYY",
-};
-
-function momentYear(date) {
-  return typeof date.year === "function"
-    ? date.year()
-    : new Date(date.valueOf()).getFullYear();
-}
-
-function minorLabel(date, scale) {
-  if (scale in MINOR_FMT) return date.format(MINOR_FMT[scale]);
-  return yearLabel(momentYear(date));
-}
-
-function majorLabel(date, scale) {
-  if (scale in MAJOR_FMT) return date.format(MAJOR_FMT[scale]);
-  return "";
-}
+import {
+  YEAR_MS,
+  formatDate,
+  gapLabel,
+  parseDate,
+  precisionOf,
+} from "./lib.js";
 
 // ---- per-schema renderers (keep old versions forever) ----------------------
 var renderers = {
@@ -94,117 +42,101 @@ var renderers = {
 };
 
 function renderTimelineV1(data) {
-  if (current) {
-    try { current.destroy(); } catch (e) {}
-    current = null;
-  }
   root.innerHTML = "";
-  var title = data && data.title;
-  if (title) {
-    var h = document.createElement("h1");
-    h.className = "title";
-    h.textContent = title;
-    root.appendChild(h);
-  }
 
   var raw = data && Array.isArray(data.items) ? data.items : [];
-  var items = [];
-  var usedGroups = {};
+  var events = [];
   raw.forEach(function (it, i) {
     it = it || {};
     var start = parseDate(it.start);
     if (!start || !it.content) return;
     var end = parseDate(it.end);
     if (end && end.getTime() <= start.getTime()) end = null;
-    var item = {
-      id: String(it.id || "e" + i),
-      content: esc(it.content),
-      title: esc(it.content),
+    events.push({
+      content: String(it.content),
+      detail: typeof it.detail === "string" ? it.detail.trim() : "",
+      group: typeof it.group === "string" ? it.group.trim() : "",
       start: start,
-    };
-    if (end) {
-      item.end = end;
-      item.type = it.type === "background" ? "background" : "range";
-    }
-    if (typeof it.group === "string" && it.group) {
-      item.group = it.group;
-      usedGroups[it.group] = true;
-    }
-    items.push(item);
+      end: end,
+      startPrecision: precisionOf(it.start),
+      endPrecision: precisionOf(it.end),
+      order: i,
+    });
   });
 
-  if (!items.length) {
-    root.innerHTML += '<div class="empty">No dated events to show.</div>';
+  if (data && data.title) {
+    var h = document.createElement("h1");
+    h.className = "title";
+    h.textContent = data.title;
+    root.appendChild(h);
+  }
+
+  if (!events.length) {
+    var empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No dated events to show.";
+    root.appendChild(empty);
     return;
   }
 
-  // Lane groups: declared ones (in order) that are actually used, then any
-  // undeclared ids items reference. When lanes exist, ungrouped items get a
-  // trailing anonymous lane — vis hides items whose group is missing.
+  // Chronological, ties broken by the order the model listed them in.
+  events.sort(function (a, b) {
+    return a.start - b.start || a.order - b.order;
+  });
+
+  // Lane labels, when the artifact declares them.
+  var groupNames = {};
   var declared = data && Array.isArray(data.groups) ? data.groups : [];
-  var groups = [];
   declared.forEach(function (g) {
-    if (g && g.id != null && usedGroups[g.id]) {
-      groups.push({ id: g.id, content: esc(g.content || String(g.id)) });
-      delete usedGroups[g.id];
-    }
+    if (g && g.id != null) groupNames[String(g.id)] = String(g.content || g.id);
   });
-  Object.keys(usedGroups).forEach(function (id) {
-    groups.push({ id: id, content: esc(id) });
-  });
-  if (groups.length) {
-    var hasUngrouped = false;
-    items.forEach(function (it) {
-      if (it.group == null) {
-        it.group = "__other__";
-        hasUngrouped = true;
-      }
-    });
-    if (hasUngrouped) groups.push({ id: "__other__", content: "&nbsp;" });
+
+  // A gap earns a marker when it is several times the typical step between
+  // events — measured against the median so one huge outlier cannot raise the
+  // bar above every other gap.
+  var steps = [];
+  for (var i = 1; i < events.length; i++) {
+    steps.push(events[i].start - events[i - 1].start);
   }
+  var sorted = steps.slice().sort(function (a, b) { return a - b; });
+  var median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
+  var threshold = Math.max(median * 4, YEAR_MS);
 
-  // Initial window covers everything with a little padding; zoom-out is capped
-  // just beyond it, zoom-in at a day.
-  var min = Infinity, max = -Infinity;
-  items.forEach(function (it) {
-    min = Math.min(min, it.start.getTime());
-    max = Math.max(max, (it.end || it.start).getTime());
+  var list = document.createElement("ol");
+  list.className = "tl";
+
+  events.forEach(function (ev, idx) {
+    if (idx > 0) {
+      var delta = ev.start - events[idx - 1].start;
+      var label = delta > threshold ? gapLabel(delta) : null;
+      if (label) {
+        var gap = document.createElement("li");
+        gap.className = "gap";
+        gap.setAttribute("aria-hidden", "true");
+        gap.innerHTML = '<span class="tick"></span><span class="gap-label">' + esc(label) + "</span>";
+        list.appendChild(gap);
+      }
+    }
+
+    var when = formatDate(ev.start, ev.startPrecision);
+    if (ev.end) when += " – " + formatDate(ev.end, ev.endPrecision);
+
+    var row = document.createElement("li");
+    row.className = "row";
+    var html =
+      '<time class="when">' + esc(when) + "</time>" +
+      '<span class="tick" aria-hidden="true"><i class="dot"></i></span>' +
+      '<div class="body"><p class="what">' + esc(ev.content) + "</p>";
+    if (ev.detail) html += '<p class="detail">' + esc(ev.detail) + "</p>";
+    if (ev.group) {
+      html += '<span class="lane">' + esc(groupNames[ev.group] || ev.group) + "</span>";
+    }
+    html += "</div>";
+    row.innerHTML = html;
+    list.appendChild(row);
   });
-  if (min === max) { min -= 31536000000; max += 31536000000; }
-  // Extra trailing room: box labels center over their dot, so events near the
-  // right edge otherwise clip against the frame.
-  var span = max - min;
-  var padStart = span * 0.06;
-  var pad = span * 0.14;
 
-  var el = document.createElement("div");
-  root.appendChild(el);
-
-  var options = {
-    stack: true,
-    maxHeight: 560,
-    minHeight: 220,
-    start: new Date(min - padStart),
-    end: new Date(max + pad),
-    min: new Date(min - span * 0.5),
-    max: new Date(max + span * 0.5),
-    zoomMin: 1000 * 60 * 60 * 24,
-    zoomKey: "ctrlKey",
-    tooltip: { followMouse: true, overflowMethod: "flip" },
-    margin: { item: { horizontal: 8, vertical: 8 }, axis: 10 },
-    order: function (a, b) { return a.start - b.start; },
-    format: { minorLabels: minorLabel, majorLabels: majorLabel },
-    xss: { disabled: true }, // content is escaped above; vis's filter mangles entities
-  };
-
-  current = groups.length
-    ? new Timeline(el, new DataSet(items), new DataSet(groups), options)
-    : new Timeline(el, new DataSet(items), options);
-
-  var hint = document.createElement("p");
-  hint.className = "hint";
-  hint.textContent = "Drag to pan · ctrl+scroll (or pinch) to zoom";
-  root.appendChild(hint);
+  root.appendChild(list);
 }
 
 // ---- host handshake --------------------------------------------------------
@@ -212,12 +144,8 @@ function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme === "dark" ? "dark" : "light");
 }
 
-function resolveTheme(msg) {
-  return msg.theme === "dark" ? "dark" : "light";
-}
-
 function onArtifact(msg) {
-  applyTheme(resolveTheme(msg));
+  applyTheme(msg.theme === "dark" ? "dark" : "light");
   var r = renderers[msg.schema_id];
   if (!r) {
     root.innerHTML = '<div class="empty">No renderer for "' + esc(msg.schema_id) + '".</div>';

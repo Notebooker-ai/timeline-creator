@@ -23,7 +23,7 @@ from open_notebook_creator_sdk import (
 from open_notebook_creator_sdk.schemas import TimelineV1
 from pydantic import BaseModel, Field
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 _ITEM_TYPES = {"point", "range", "box", "background"}
 
@@ -58,6 +58,9 @@ def _clean_item(raw: object, index: int) -> dict | None:
     end = raw.get("end")
     if isinstance(end, str) and end.strip():
         item["end"] = end.strip()
+    detail = raw.get("detail")
+    if isinstance(detail, str) and detail.strip():
+        item["detail"] = detail.strip()
     group = raw.get("group")
     if isinstance(group, str) and group.strip():
         item["group"] = group.strip()
