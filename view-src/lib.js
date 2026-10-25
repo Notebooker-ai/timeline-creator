@@ -19,6 +19,9 @@ export function parseDate(value) {
   if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
   var s = String(value).trim().replace(/^(?:c\.?|ca\.?|circa)\s+/i, "");
   if (!s) return null;
+  var relative = /^day:([1-9]\d{0,3})$/.exec(s);
+  if (relative) return new Date(Number(relative[1]) * 86400000);
+  if (/^day:/i.test(s)) return null;
   var ym = /^(-?\d{1,4})$/.exec(s);
   if (ym) return yearDate(parseInt(ym[1], 10));
   var bc = /^(\d{1,5})\s*(?:BCE?|B\.C\.(?:E\.)?)$/i.exec(s);
@@ -52,6 +55,7 @@ export var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct"
 // "1 Jan 1356" — that is a fact the sources never asserted.
 export function precisionOf(raw) {
   var s = String(raw == null ? "" : raw).trim().replace(/^(?:c\.?|ca\.?|circa)\s+/i, "");
+  if (/^day:[1-9]\d{0,3}$/.test(s)) return "relative";
   if (/^-?\d{1,4}$/.test(s)) return "year";
   if (/^\d{1,5}\s*(?:BCE?|B\.C\.(?:E\.)?|AD|A\.D\.|CE|C\.E\.)$/i.test(s)) return "year";
   if (/^(?:AD|A\.D\.|CE|C\.E\.)\s*\d{1,5}$/i.test(s)) return "year";
@@ -60,6 +64,7 @@ export function precisionOf(raw) {
 }
 
 export function formatDate(date, precision) {
+  if (precision === "relative") return String(Math.round(date.getTime() / 86400000));
   var y = yearLabel(date.getFullYear());
   if (precision === "year") return y;
   if (precision === "month") return MONTHS[date.getMonth()] + " " + y;

@@ -42,3 +42,6 @@ jobs:
       - name: Run view tests
         working-directory: view-src
         run: node --test
+
+      - name: Run renderer regression tests
+        run: node --test view-src/lib.test.mjs

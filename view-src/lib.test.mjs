@@ -51,3 +51,12 @@ test("reads a calendar date as the day the source wrote", () => {
   assert.equal(formatDate(d, "day"), "19 Sep 1356");
   assert.equal(formatDate(parseDate("1356-09"), "month"), "Sep 1356");
 });
+
+
+test('relative study schedules never acquire invented calendar dates',()=>{
+ assert.equal(precisionOf('day:1'),'relative');
+ assert.equal(formatDate(parseDate('day:1'),'relative'),'1');
+ assert.equal(formatDate(parseDate('day:6'),'relative'),'6');
+ assert.ok(parseDate('day:3')>parseDate('day:1'));
+ assert.equal(parseDate('day:0'),null);
+});

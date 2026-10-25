@@ -23,7 +23,7 @@ from open_notebook_creator_sdk import (
 from open_notebook_creator_sdk.schemas import TimelineV1
 from pydantic import BaseModel, Field
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 _ITEM_TYPES = {"point", "range", "box", "background"}
 
@@ -147,6 +147,18 @@ class TimelineCreator(BaseCreator):
             )
 
         raw_items = parsed.get("items", []) if isinstance(parsed.get("items"), list) else []
+        bases = {r.get("time_basis") for r in raw_items if isinstance(r, dict)} - {None}
+        illustrative_source = re.search(r"fictional|illustrative|hypothetical", request.content.text, re.I)
+        weekly_items = any(re.search(r"monday|tuesday|wednesday|thursday|friday|saturday|sunday", str(r.get("content", "")), re.I) for r in raw_items if isinstance(r, dict))
+        years = [int(str(r.get("start", ""))[:4]) for r in raw_items if isinstance(r, dict) and re.match(r"^\d{4}", str(r.get("start", "")))]
+        has_relative = any(str(r.get("start", "")).startswith("day:") for r in raw_items if isinstance(r, dict))
+        if len(bases) > 1 or (has_relative and years) or (illustrative_source and weekly_items and years and max(years) - min(years) > 10):
+            return CreationResult(
+                status="FAILURE", schema_id="timeline.v1", data={},
+                errors=[CreationError(phase="generate", message="Historical events and illustrative schedules cannot share one time axis", retryable=True)],
+                user_message="Choose either historical events or an illustrative schedule for this timeline.",
+            )
+
         items = [it for it in (_clean_item(r, i) for i, r in enumerate(raw_items)) if it]
         items = items[: cfg.max_events]
 

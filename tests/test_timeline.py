@@ -199,3 +199,26 @@ def test_clean_item_keeps_a_detail_line():
     # Absent or blank detail is simply omitted, not stored as an empty string.
     assert "detail" not in _clean_item({"content": "Truce", "start": "1357"}, 1)
     assert "detail" not in _clean_item({"content": "Truce", "start": "1357", "detail": "  "}, 2)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("metadata", [False, True])
+async def test_historical_event_and_fictional_schedule_cannot_share_an_axis(tmp_path, metadata):
+    items = [{"id":"history","content":"Ebbinghaus publication","start":"1885"}, {"id":"example","content":"Monday recall","start":"2026-10-19"}]
+    if metadata:
+        items[0]["time_basis"] = "historical"
+        items[1]["time_basis"] = "illustrative"
+    result = await TimelineCreator().generate(CreationRequest(
+        content=ContentBundle(text="Ebbinghaus published in 1885. A fictional classroom illustration has Monday, Wednesday and Saturday practice."),
+        models={"text": _role({"title":"Learning","items":items})}, output_dir=str(tmp_path), artifact_id="a"))
+    assert result.status == "FAILURE"
+    assert "time axis" in result.errors[0].message
+
+
+@pytest.mark.asyncio
+async def test_illustrative_weekdays_use_relative_days_without_calendar_years(tmp_path):
+    items = [{"id":"monday","content":"Monday: recall","start":"day:1","time_basis":"illustrative"}, {"id":"wednesday","content":"Wednesday: revisit","start":"day:3","time_basis":"illustrative"}]
+    result = await TimelineCreator().generate(CreationRequest(content=ContentBundle(text="An illustrative Monday and Wednesday study schedule."), models={"text":_role({"title":"Illustrative schedule","items":items})},output_dir=str(tmp_path),artifact_id="a"))
+    assert result.status == "SUCCESS"
+    assert [i["start"] for i in result.data["items"]] == ["day:1", "day:3"]
+    assert_result_compliant(TimelineCreator(), result)

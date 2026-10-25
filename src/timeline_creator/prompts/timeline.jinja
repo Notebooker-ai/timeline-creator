@@ -21,6 +21,14 @@ Produce up to {{ max_events }} events. For each event:
 {% endif %}
 
 Guidelines:
+- Choose ONE coherent time basis: historical events OR an illustrative schedule.
+  Never put historical dates and fictional weekly steps on the same linear axis,
+  even in separate lanes. Do not anchor an undated example to an invented year.
+  If only weekdays are supplied, use relative start values "day:1", "day:3",
+  "day:6" and keep the actual weekday in content. These are relative offsets,
+  not calendar dates. Label this explicitly as an illustrative schedule.
+- Return "time_basis": "historical" or "illustrative" on each item (validation
+  metadata only). Mixed time bases are rejected. Keep the chosen basis in the title.
 - Derive dates from the content; if an exact date is unknown, use the best-supported
   year or relative ordering. Keep events in chronological order.
 - Give each date only the precision the sources support: a bare year ("1356") when
